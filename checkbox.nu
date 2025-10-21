@@ -175,13 +175,15 @@ export def color [
 # by the Hyperlith framework.
 #
 # Example:
-#   checkbox toggle -c 42 -k 100   # Toggle cell 42 in chunk 100
-#   checkbox toggle -c 5 -k 0      # Using short flags
-#   checkbox toggle --verbose      # Toggle cell 0, chunk 0 with details
+#   checkbox toggle -c 42 -k 100              # Toggle cell 42 in chunk 100
+#   checkbox toggle -c 5 -k 0                 # Using short flags
+#   checkbox toggle --verbose                 # Toggle cell 0, chunk 0 with details
+#   checkbox toggle -c 7 -k 5 --color orange  # Set color then toggle
 export def toggle [
-    --cell (-c): int = 0    # Cell ID within the chunk (0-255)
-    --chunk (-k): int = 0   # Chunk ID on the board
-    --verbose (-v)          # Show detailed output
+    --cell (-c): int = 0        # Cell ID within the chunk (0-255)
+    --chunk (-k): int = 0       # Chunk ID on the board
+    --color: string             # Color name to set before toggling (red, blue, green, orange, etc.)
+    --verbose (-v)              # Show detailed output
 ]: nothing -> record {
 
     # Validate parameters
@@ -195,6 +197,66 @@ export def toggle [
     let session = (get-session --verbose=$verbose)
     let cookie_header = $session.cookie_header
     let csrf = $session.csrf
+
+    # Set color if requested (using same session)
+    if $color != null {
+        let colors = {
+            clear: 0
+            red: 1
+            blue: 2
+            green: 3
+            orange: 4
+            pink: 5
+            maroon: 6
+            peach: 7
+            navy: 8
+            brown: 9
+            yellow: 10
+            darkgreen: 11
+            gray: 12
+            purple: 13
+            darkgray: 14
+        }
+
+        let color_id = ($colors | get -o $color)
+        if $color_id == null {
+            error make {
+                msg: $"Unknown color name: ($color)"
+                label: { text: "valid colors: clear, red, blue, green, orange, pink, maroon, peach, navy, brown, yellow, darkgreen, gray, purple, darkgray" }
+            }
+        }
+
+        if $verbose {
+            print $"🎨 Setting color to ($color) (($color_id))..."
+        }
+
+        let color_path = "k7tDX7WolUoWsg_mJCVo61xVPcPNJVtn8"
+        let color_resp = (
+            http post --full --allow-errors
+            --content-type "application/json"
+            --headers {
+                "Accept-Encoding": "br, gzip",
+                "Cookie": $cookie_header
+            }
+            $"https://checkboxes.andersmurphy.com/($color_path)"
+            {
+                csrf: $csrf,
+                tabid: "nushell-cli",
+                targetid: ($color_id | into string)
+            }
+        )
+
+        let color_status = ($color_resp | get status)
+        if $color_status != 204 {
+            error make {
+                msg: $"Failed to set color. HTTP status: ($color_status)"
+            }
+        }
+
+        if $verbose {
+            print $"✅ Color set to ($color)"
+        }
+    }
 
     # Step 5: Action endpoint is a hash of "app.main/handler-check"
     # Calculated as: "/" + base64_url(sha256("app.main/handler-check"))[10..]
