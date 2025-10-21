@@ -17,7 +17,7 @@
 # Helper function to get session credentials (not exported)
 def get-session [--verbose] {
     if $verbose {
-        print $"🔐 Fetching session cookies..."
+        print $"[AUTH] Fetching session cookies..."
     }
 
     let resp = (http get --full --headers {
@@ -124,7 +124,7 @@ export def toggle [
         }
 
         if $verbose {
-            print $"🎨 Setting color to ($color) (($color_id))..."
+            print $"[COLOR] Setting color to ($color) (($color_id))..."
         }
 
         let color_path = "k7tDX7WolUoWsg_mJCVo61xVPcPNJVtn8"
@@ -151,7 +151,7 @@ export def toggle [
         }
 
         if $verbose {
-            print $"✅ Color set to ($color)"
+            print $"[OK] Color set to ($color)"
         }
     }
 
@@ -160,7 +160,7 @@ export def toggle [
     let action_path = "t_rqnpSL_NvK8EJhoBwkc6TNJ4VsLi1Fs"
 
     if $verbose {
-        print $"🎯 Toggling checkbox at ($x), ($y) [chunk ($chunk), cell ($cell)]..."
+        print $"[TOGGLE] Toggling checkbox at ($x), ($y) [chunk ($chunk), cell ($cell)]..."
     }
 
     # Toggle the checkbox via POST request
@@ -186,9 +186,9 @@ export def toggle [
 
     if $verbose {
         if $success {
-            print $"✅ SUCCESS - Toggled checkbox at ($x), ($y)"
+            print $"[OK] SUCCESS - Toggled checkbox at ($x), ($y)"
         } else {
-            print $"❌ FAILED - HTTP Status: ($status)"
+            print $"[ERROR] FAILED - HTTP Status: ($status)"
         }
     }
 
