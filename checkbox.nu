@@ -6,12 +6,12 @@
 #
 # Usage:
 #   use checkbox.nu
-#   checkbox toggle -c 42 -k 100
+#   checkbox toggle 100 200
 #   checkbox info
 #
 # Or import all commands:
 #   use checkbox.nu *
-#   toggle -c 42 -k 100
+#   toggle 100 200
 #   info
 
 # Helper function to get session credentials (not exported)
@@ -49,149 +49,46 @@ def get-session [--verbose] {
     }
 }
 
-# Set the color for future checkbox toggles
-#
-# Colors available: 0 (clear), 1-14 (various colors)
-# The color persists for the session and affects subsequent toggles.
-#
-# Example:
-#   checkbox color 4                # Set to orange
-#   checkbox color --name red       # Set by name
-#   checkbox color --list           # List all colors
-export def color [
-    color_id?: int          # Color ID (0-14)
-    --name (-n): string     # Color name (red, blue, green, etc.)
-    --list (-l)             # List all available colors
-    --verbose (-v)          # Show detailed output
-]: nothing -> any {
-
-    # Color definitions
-    let colors = {
-        clear: 0
-        red: 1
-        blue: 2
-        green: 3
-        orange: 4
-        pink: 5
-        maroon: 6
-        peach: 7
-        navy: 8
-        brown: 9
-        yellow: 10
-        darkgreen: 11
-        gray: 12
-        purple: 13
-        darkgray: 14
-    }
-
-    # If --list, show all colors
-    if $list {
-        let hex_colors = [
-            "#000000" "#FF004D" "#29ADFF" "#00E436" "#FFA300"
-            "#FF77A8" "#7E2553" "#FFCCAA" "#1D2B53" "#AB5236"
-            "#FFEC27" "#008751" "#C2C3C7" "#83769C" "#5F574F"
-        ]
-        return ($colors | transpose name id | enumerate | each {|row|
-            $row.item | insert hex ($hex_colors | get $row.index)
-        })
-    }
-
-    # Determine color ID
-    let color = (if $name != null {
-        let result = ($colors | get -o $name)
-        if $result == null {
-            error make {
-                msg: $"Unknown color name: ($name)"
-                label: { text: "valid colors: clear, red, blue, green, orange, pink, maroon, peach, navy, brown, yellow, darkgreen, gray, purple, darkgray" }
-            }
-        } else {
-            $result
-        }
-    } else if $color_id != null {
-        $color_id
-    } else {
-        1  # Default to red
-    })
-
-    # Validate color ID
-    if $color < 0 or $color > 14 {
-        error make {
-            msg: $"Color ID must be between 0 and 14, got ($color)"
-        }
-    }
-
-    # Get session
-    let session = (get-session --verbose=$verbose)
-
-    let action_path = "k7tDX7WolUoWsg_mJCVo61xVPcPNJVtn8"
-
-    if $verbose {
-        print $"🎨 Setting color to ($color)..."
-    }
-
-    let color_resp = (
-        http post --full --allow-errors
-        --content-type "application/json"
-        --headers {
-            "Accept-Encoding": "br, gzip",
-            "Cookie": $session.cookie_header
-        }
-        $"https://checkboxes.andersmurphy.com/($action_path)"
-        {
-            csrf: $session.csrf,
-            tabid: "nushell-cli",
-            targetid: ($color | into string)
-        }
-    )
-
-    let status = ($color_resp | get status)
-    let success = ($status == 204)
-
-    if $verbose {
-        if $success {
-            print $"✅ Color set to ($color)"
-        } else {
-            print $"❌ FAILED - HTTP Status: ($status)"
-        }
-    }
-
-    {
-        success: $success
-        status: $status
-        color: $color
-        message: (if $success {
-            $"Color set to ($color)"
-        } else {
-            $"Failed with HTTP status ($status)"
-        })
-    }
-}
-
 # Toggle a checkbox on checkboxes.andersmurphy.com
 #
 # This command makes authenticated HTTP requests to toggle a checkbox
-# on Anders Murphy's "One Billion Checkboxes" website. It handles session
-# management, CSRF tokens, and the custom hashed action endpoints used
-# by the Hyperlith framework.
+# on Anders Murphy's "One Billion Checkboxes" website using x,y coordinates.
+# The grid is 31,632 × 31,632 checkboxes, organized into 16×16 chunks.
 #
 # Example:
-#   checkbox toggle -c 42 -k 100              # Toggle cell 42 in chunk 100
-#   checkbox toggle -c 5 -k 0                 # Using short flags
-#   checkbox toggle --verbose                 # Toggle cell 0, chunk 0 with details
-#   checkbox toggle -c 7 -k 5 --color orange  # Set color then toggle
+#   checkbox toggle 0 0           # Toggle top-left checkbox
+#   checkbox toggle 100 200       # Toggle checkbox at x=100, y=200
+#   checkbox toggle 15000 15000 --verbose  # With detailed output
+#   checkbox toggle 100 200 --color orange  # Set color then toggle
 export def toggle [
-    --cell (-c): int = 0        # Cell ID within the chunk (0-255)
-    --chunk (-k): int = 0       # Chunk ID on the board
-    --color: string             # Color name to set before toggling (red, blue, green, orange, etc.)
+    x: int                      # X coordinate (0-31,631)
+    y: int                      # Y coordinate (0-31,631)
+    --color: string             # Color name (red, blue, green, orange, etc.)
     --verbose (-v)              # Show detailed output
 ]: nothing -> record {
 
     # Validate parameters
-    if $cell < 0 or $cell > 255 {
+    if $x < 0 or $x > 31631 {
         error make {
-            msg: "Cell ID must be between 0 and 255"
+            msg: $"X coordinate must be between 0 and 31,631, got ($x)"
         }
     }
+    if $y < 0 or $y > 31631 {
+        error make {
+            msg: $"Y coordinate must be between 0 and 31,631, got ($y)"
+        }
+    }
+
+    # Convert x,y coordinates to chunk and cell
+    # Grid is 31,632 × 31,632 = 1,000,782,224 checkboxes
+    # Organized into 16×16 chunks (1,977 × 1,977 chunks)
+    let chunk_x = ($x // 16)
+    let chunk_y = ($y // 16)
+    let local_x = ($x mod 16)
+    let local_y = ($y mod 16)
+
+    let chunk = ($chunk_y * 1977 + $chunk_x)
+    let cell = ($local_y * 16 + $local_x)
 
     # Get session
     let session = (get-session --verbose=$verbose)
@@ -258,15 +155,15 @@ export def toggle [
         }
     }
 
-    # Step 5: Action endpoint is a hash of "app.main/handler-check"
+    # Action endpoint is a hash of "app.main/handler-check"
     # Calculated as: "/" + base64_url(sha256("app.main/handler-check"))[10..]
     let action_path = "t_rqnpSL_NvK8EJhoBwkc6TNJ4VsLi1Fs"
 
     if $verbose {
-        print $"🎯 Toggling checkbox cell=($cell) in chunk=($chunk)..."
+        print $"🎯 Toggling checkbox at ($x), ($y) [chunk ($chunk), cell ($cell)]..."
     }
 
-    # Step 6: Toggle the checkbox via POST request
+    # Toggle the checkbox via POST request
     let toggle_resp = (
         http post --full --allow-errors
         --content-type "application/json"
@@ -283,13 +180,13 @@ export def toggle [
         }
     )
 
-    # Step 7: Return result
+    # Return result
     let status = ($toggle_resp | get status)
     let success = ($status == 204)
 
     if $verbose {
         if $success {
-            print $"✅ SUCCESS - Toggled checkbox ($cell) in chunk ($chunk)"
+            print $"✅ SUCCESS - Toggled checkbox at ($x), ($y)"
         } else {
             print $"❌ FAILED - HTTP Status: ($status)"
         }
@@ -298,8 +195,10 @@ export def toggle [
     {
         success: $success
         status: $status
-        cell: $cell
+        x: $x
+        y: $y
         chunk: $chunk
+        cell: $cell
         message: (if $success {
             "Checkbox toggled successfully"
         } else {
@@ -318,34 +217,46 @@ export def info []: nothing -> record {
         url: "https://checkboxes.andersmurphy.com/"
         author: "Anders Murphy"
         framework: "Hyperlith (Clojure + Datastar)"
+        grid_size: "31,632 × 31,632"
         chunk_size: 16
         cells_per_chunk: 256
-        total_cells: 1000000000
-        description: "A collaborative checkbox grid with 1 billion checkboxes"
-        colors: {
-            available: 15
-            range: "0 (clear) to 14"
-            names: ["clear", "red", "blue", "green", "orange", "pink", "maroon", "peach", "navy", "brown", "yellow", "darkgreen", "gray", "purple", "darkgray"]
-        }
+        total_cells: 1000782224
+        description: "A collaborative checkbox grid"
+        coordinate_range: "x: 0-31,631, y: 0-31,631"
         endpoints: {
             homepage: "/"
             toggle: "/t_rqnpSL_NvK8EJhoBwkc6TNJ4VsLi1Fs"
-            color: "/k7tDX7WolUoWsg_mJCVo61xVPcPNJVtn8"
         }
     }
 }
 
 # Toggle multiple checkboxes in sequence
 #
-# Accepts a list of records with cell and chunk fields and toggles
+# Accepts a list of records with x and y fields and toggles
 # each checkbox in order. Returns a table of results.
+# Optional color field per record, or global --color flag.
 #
 # Example:
-#   [{cell: 1, chunk: 0}, {cell: 2, chunk: 0}] | checkbox batch
+#   [{x: 0, y: 0}, {x: 1, y: 0}] | checkbox batch
+#   [{x: 0, y: 0, color: "red"}, {x: 1, y: 0, color: "blue"}] | checkbox batch
+#   [{x: 0, y: 0}, {x: 1, y: 0}] | checkbox batch --color orange
 export def batch [
-    --verbose (-v)  # Show detailed output for each toggle
+    --color: string  # Global color for all toggles (can be overridden per item)
+    --verbose (-v)   # Show detailed output for each toggle
 ]: list<record> -> table {
     each { |item|
-        toggle --cell $item.cell --chunk $item.chunk --verbose=$verbose
+        let item_color = (if ($item | get -i color) != null {
+            $item.color
+        } else if $color != null {
+            $color
+        } else {
+            null
+        })
+
+        if $item_color != null {
+            toggle $item.x $item.y --color $item_color --verbose=$verbose
+        } else {
+            toggle $item.x $item.y --verbose=$verbose
+        }
     }
 }
