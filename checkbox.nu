@@ -13,24 +13,20 @@ def get-session [ --verbose] {
     print $"[AUTH] Fetching session cookies..."
   }
 
-  let resp = (
-    http get --full --headers {
-      Accept: "text/html"
-      "Accept-Encoding": "br, gzip"
-    } "https://checkboxes.andersmurphy.com/"
-  )
+  let resp = http get --full --headers {
+    Accept: "text/html"
+    "Accept-Encoding": "br, gzip"
+  } "https://checkboxes.andersmurphy.com/"
 
-  let cookies = (
-    $resp
-    | get headers.response
-    | where name == "set-cookie"
-    | get value
-    | each {|cookie| $cookie | parse "{name}={value}; {_}" }
-    | flatten
-  )
+  let cookies = $resp
+  | get headers.response
+  | where name == "set-cookie"
+  | get value
+  | each {|cookie| $cookie | parse "{name}={value}; {_}" }
+  | flatten
 
-  let sid = ($cookies | where name == "__Host-sid" | get value | first)
-  let csrf = ($cookies | where name == "__Host-csrf" | get value | first)
+  let sid = $cookies | where name == "__Host-sid" | get value | first
+  let csrf = $cookies | where name == "__Host-csrf" | get value | first
 
   let tabid = $"nu-(random uuid)"
 
@@ -72,15 +68,15 @@ export def toggle [
   }
 
   # Convert x,y to chunk/cell (16x16 chunks)
-  let chunk_x = ($x // 16)
-  let chunk_y = ($y // 16)
-  let local_x = ($x mod 16)
-  let local_y = ($y mod 16)
+  let chunk_x = $x // 16
+  let chunk_y = $y // 16
+  let local_x = $x mod 16
+  let local_y = $y mod 16
 
-  let chunk = ($chunk_y * 1977 + $chunk_x)
-  let cell = ($local_y * 16 + $local_x)
+  let chunk = $chunk_y * 1977 + $chunk_x
+  let cell = $local_y * 16 + $local_x
 
-  let session = (get-session --verbose=$verbose)
+  let session = get-session --verbose=$verbose
   let cookie_header = $session.cookie_header
   let csrf = $session.csrf
   let tabid = $session.tabid
@@ -104,7 +100,7 @@ export def toggle [
       darkgray: 14
     }
 
-    let color_id = ($colors | get -o $color)
+    let color_id = $colors | get -o $color
     if $color_id == null {
       error make {
         msg: $"Unknown color name: ($color)"
@@ -132,7 +128,7 @@ export def toggle [
       }
     )
 
-    let color_status = ($color_resp | get status)
+    let color_status = $color_resp | get status
     if $color_status != 204 {
       error make {
         msg: $"Failed to set color. HTTP status: ($color_status)"
@@ -166,8 +162,8 @@ export def toggle [
     }
   )
 
-  let status = ($toggle_resp | get status)
-  let success = ($status == 204)
+  let status = $toggle_resp | get status
+  let success = $status == 204
 
   if $verbose {
     if $success {
@@ -245,15 +241,13 @@ export def batch [
   --verbose (-v) # Show detailed output for each toggle
 ]: list<record> -> table {
   each {|item|
-    let item_color = (
-      if ($item | get -o color) != null {
-        $item.color
-      } else if $color != null {
-        $color
-      } else {
-        null
-      }
-    )
+    let item_color = if ($item | get -o color) != null {
+      $item.color
+    } else if $color != null {
+      $color
+    } else {
+      null
+    }
 
     if $item_color != null {
       toggle $item.x $item.y --color $item_color --verbose=$verbose
