@@ -44,150 +44,22 @@ def get-session [ --verbose] {
   }
 }
 
-# Toggle checkbox at x,y (0-31631 each)
+# Toggle a single checkbox at x,y coordinates
 #
-# Examples:
-#   toggle 0 0
-#   toggle 100 200 --color orange
+# Convenience wrapper around batch for single toggles.
 export def toggle [
   x: int # X coordinate (0-31631)
   y: int # Y coordinate (0-31631)
   --color: string # Color name (see `colors` command)
   --verbose (-v) # Show detailed output
-]: nothing -> record {
-
-  if $x < 0 or $x > 31631 {
-    error make {
-      msg: $"X coordinate must be between 0 and 31631, got ($x)"
-    }
-  }
-  if $y < 0 or $y > 31631 {
-    error make {
-      msg: $"Y coordinate must be between 0 and 31631, got ($y)"
-    }
+]: nothing -> table {
+  let ops = if $color != null {
+    [{color: $color} {toggle: {x: $x y: $y}}]
+  } else {
+    [{toggle: {x: $x y: $y}}]
   }
 
-  # Convert x,y to chunk/cell (16x16 chunks)
-  let chunk_x = $x // 16
-  let chunk_y = $y // 16
-  let local_x = $x mod 16
-  let local_y = $y mod 16
-
-  let chunk = $chunk_y * 1977 + $chunk_x
-  let cell = $local_y * 16 + $local_x
-
-  let session = get-session --verbose=$verbose
-  let cookie_header = $session.cookie_header
-  let csrf = $session.csrf
-  let tabid = $session.tabid
-
-  if $color != null {
-    let colors = {
-      clear: 0
-      red: 1
-      blue: 2
-      green: 3
-      orange: 4
-      pink: 5
-      maroon: 6
-      peach: 7
-      navy: 8
-      brown: 9
-      yellow: 10
-      darkgreen: 11
-      gray: 12
-      purple: 13
-      darkgray: 14
-    }
-
-    let color_id = $colors | get -o $color
-    if $color_id == null {
-      error make {
-        msg: $"Unknown color name: ($color)"
-        label: {text: "valid colors: clear, red, blue, green, orange, pink, maroon, peach, navy, brown, yellow, darkgreen, gray, purple, darkgray"}
-      }
-    }
-
-    if $verbose {
-      print $"[COLOR] Setting color to ($color) (($color_id))..."
-    }
-
-    let color_path = "k7tDX7WolUoWsg_mJCVo61xVPcPNJVtn8"
-    let color_resp = (
-      http post --full --allow-errors
-      --content-type "application/json"
-      --headers {
-        "Accept-Encoding": "br, gzip"
-        "Cookie": $cookie_header
-      }
-      $"https://checkboxes.andersmurphy.com/($color_path)"
-      {
-        csrf: $csrf
-        tabid: $tabid
-        targetid: ($color_id | into string)
-      }
-    )
-
-    let color_status = $color_resp | get status
-    if $color_status != 204 {
-      error make {
-        msg: $"Failed to set color. HTTP status: ($color_status)"
-      }
-    }
-
-    if $verbose {
-      print $"[OK] Color set to ($color)"
-    }
-  }
-
-  let action_path = "t_rqnpSL_NvK8EJhoBwkc6TNJ4VsLi1Fs"
-
-  if $verbose {
-    print $"[TOGGLE] Toggling checkbox at ($x), ($y) [chunk ($chunk), cell ($cell)]..."
-  }
-
-  let toggle_resp = (
-    http post --full --allow-errors
-    --content-type "application/json"
-    --headers {
-      "Accept-Encoding": "br, gzip"
-      "Cookie": $cookie_header
-    }
-    $"https://checkboxes.andersmurphy.com/($action_path)"
-    {
-      csrf: $csrf
-      tabid: $tabid
-      targetid: ($cell | into string)
-      parentid: ($chunk | into string)
-    }
-  )
-
-  let status = $toggle_resp | get status
-  let success = $status == 204
-
-  if $verbose {
-    if $success {
-      print $"[OK] SUCCESS - Toggled checkbox at ($x), ($y)"
-    } else {
-      print $"[ERROR] FAILED - HTTP Status: ($status)"
-    }
-  }
-
-  {
-    success: $success
-    status: $status
-    x: $x
-    y: $y
-    chunk: $chunk
-    cell: $cell
-    message: (
-      if $success {
-        "Checkbox toggled successfully"
-      } else {
-        $"Failed with HTTP status ($status)"
-      }
-    )
-  }
+  $ops | batch --verbose=$verbose
 }
 
 # List available colors
@@ -231,28 +103,198 @@ export def info []: nothing -> record {
   }
 }
 
-# Toggle multiple checkboxes from list of {x, y, ?color} records
+# Process stream of toggle and color operations
+#
+# Stream format: list of records with either:
+#   {toggle: {x: int, y: int}} - toggle checkbox
+#   {color: string} - set color for subsequent toggles
 #
 # Examples:
-#   [{x: 0, y: 0}, {x: 1, y: 0}] | batch
-#   [{x: 0, y: 0, color: "red"}] | batch
+#   [{toggle: {x: 0, y: 0}}] | batch
+#   [{color: "red"}, {toggle: {x: 0, y: 0}}] | batch
 export def batch [
-  --color: string # Global color (see `colors` command; can be overridden per item)
-  --verbose (-v) # Show detailed output for each toggle
+  --color: string # Initial color (see `colors` command)
+  --verbose (-v) # Show detailed output for each operation
 ]: list<record> -> table {
-  each {|item|
-    let item_color = if ($item | get -o color) != null {
-      $item.color
-    } else if $color != null {
-      $color
-    } else {
-      null
+  let session = get-session --verbose=$verbose
+  let cookie_header = $session.cookie_header
+  let csrf = $session.csrf
+  let tabid = $session.tabid
+
+  let colors = {
+    clear: 0
+    red: 1
+    blue: 2
+    green: 3
+    orange: 4
+    pink: 5
+    maroon: 6
+    peach: 7
+    navy: 8
+    brown: 9
+    yellow: 10
+    darkgreen: 11
+    gray: 12
+    purple: 13
+    darkgray: 14
+  }
+
+  # Set initial color if provided
+  if $color != null {
+    let color_id = $colors | get -o $color
+    if $color_id == null {
+      error make {
+        msg: $"Unknown color name: ($color)"
+        label: {text: "valid colors: clear, red, blue, green, orange, pink, maroon, peach, navy, brown, yellow, darkgreen, gray, purple, darkgray"}
+      }
     }
 
-    if $item_color != null {
-      toggle $item.x $item.y --color $item_color --verbose=$verbose
+    if $verbose {
+      print $"[COLOR] Setting initial color to ($color) (($color_id))..."
+    }
+
+    let color_path = "k7tDX7WolUoWsg_mJCVo61xVPcPNJVtn8"
+    (
+      http post --full --allow-errors
+      --content-type "application/json"
+      --headers {
+        "Accept-Encoding": "br, gzip"
+        "Cookie": $cookie_header
+      }
+      $"https://checkboxes.andersmurphy.com/($color_path)"
+      {
+        csrf: $csrf
+        tabid: $tabid
+        targetid: ($color_id | into string)
+      }
+    ) | ignore
+
+    if $verbose {
+      print $"[OK] Initial color set to ($color)"
+    }
+  }
+
+  $in | each {|item|
+    if ($item | get -o color) != null {
+      # Color operation
+      let color_name = $item.color
+      let color_id = $colors | get -o $color_name
+      if $color_id == null {
+        error make {
+          msg: $"Unknown color name: ($color_name)"
+          label: {text: "valid colors: clear, red, blue, green, orange, pink, maroon, peach, navy, brown, yellow, darkgreen, gray, purple, darkgray"}
+        }
+      }
+
+      if $verbose {
+        print $"[COLOR] Setting color to ($color_name) (($color_id))..."
+      }
+
+      let color_path = "k7tDX7WolUoWsg_mJCVo61xVPcPNJVtn8"
+      let color_resp = (
+        http post --full --allow-errors
+        --content-type "application/json"
+        --headers {
+          "Accept-Encoding": "br, gzip"
+          "Cookie": $cookie_header
+        }
+        $"https://checkboxes.andersmurphy.com/($color_path)"
+        {
+          csrf: $csrf
+          tabid: $tabid
+          targetid: ($color_id | into string)
+        }
+      )
+
+      let color_status = $color_resp | get status
+      if $color_status != 204 {
+        error make {
+          msg: $"Failed to set color. HTTP status: ($color_status)"
+        }
+      }
+
+      if $verbose {
+        print $"[OK] Color set to ($color_name)"
+      }
+
+      {operation: "color" color: $color_name success: true}
+    } else if ($item | get -o toggle) != null {
+      # Toggle operation
+      let x = $item.toggle.x
+      let y = $item.toggle.y
+
+      if $x < 0 or $x > 31631 {
+        error make {
+          msg: $"X coordinate must be between 0 and 31631, got ($x)"
+        }
+      }
+      if $y < 0 or $y > 31631 {
+        error make {
+          msg: $"Y coordinate must be between 0 and 31631, got ($y)"
+        }
+      }
+
+      # Convert x,y to chunk/cell (16x16 chunks)
+      let chunk_x = $x // 16
+      let chunk_y = $y // 16
+      let local_x = $x mod 16
+      let local_y = $y mod 16
+
+      let chunk = $chunk_y * 1977 + $chunk_x
+      let cell = $local_y * 16 + $local_x
+
+      let action_path = "t_rqnpSL_NvK8EJhoBwkc6TNJ4VsLi1Fs"
+
+      if $verbose {
+        print $"[TOGGLE] Toggling checkbox at ($x), ($y) [chunk ($chunk), cell ($cell)]..."
+      }
+
+      let toggle_resp = (
+        http post --full --allow-errors
+        --content-type "application/json"
+        --headers {
+          "Accept-Encoding": "br, gzip"
+          "Cookie": $cookie_header
+        }
+        $"https://checkboxes.andersmurphy.com/($action_path)"
+        {
+          csrf: $csrf
+          tabid: $tabid
+          targetid: ($cell | into string)
+          parentid: ($chunk | into string)
+        }
+      )
+
+      let status = $toggle_resp | get status
+      let success = $status == 204
+
+      if $verbose {
+        if $success {
+          print $"[OK] SUCCESS - Toggled checkbox at ($x), ($y)"
+        } else {
+          print $"[ERROR] FAILED - HTTP Status: ($status)"
+        }
+      }
+
+      {
+        success: $success
+        status: $status
+        x: $x
+        y: $y
+        chunk: $chunk
+        cell: $cell
+        message: (
+          if $success {
+            "Checkbox toggled successfully"
+          } else {
+            $"Failed with HTTP status ($status)"
+          }
+        )
+      }
     } else {
-      toggle $item.x $item.y --verbose=$verbose
+      error make {
+        msg: "Invalid operation: must have either 'toggle' or 'color' key"
+      }
     }
   }
 }
@@ -261,7 +303,7 @@ export def batch [
 export def main []: nothing -> table {
   [
     {command: "toggle" description: "Toggle checkbox at x,y coordinates"}
-    {command: "batch" description: "Toggle multiple checkboxes from list"}
+    {command: "batch" description: "Process stream of toggle and color operations"}
     {command: "colors" description: "List available colors"}
     {command: "info" description: "Service metadata"}
   ]
