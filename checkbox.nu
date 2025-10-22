@@ -62,8 +62,8 @@ export def toggle [
   --verbose (-v) # Show detailed output
 ]: nothing -> table {
   [{toggle: {x: $x y: $y}}]
-    | conditional-pipe ($color != null) { prepend {color: $color} }
-    | batch --verbose=$verbose
+  | conditional-pipe ($color != null) { prepend {color: $color} }
+  | batch --verbose=$verbose
 }
 
 # List available colors
@@ -117,7 +117,6 @@ export def info []: nothing -> record {
 #   [{toggle: {x: 0, y: 0}}] | batch
 #   [{color: "red"}, {toggle: {x: 0, y: 0}}] | batch
 export def batch [
-  --color: string # Initial color (see `colors` command)
   --verbose (-v) # Show detailed output for each operation
 ]: list<record> -> table {
   let session = get-session --verbose=$verbose
@@ -141,41 +140,6 @@ export def batch [
     gray: 12
     purple: 13
     darkgray: 14
-  }
-
-  # Set initial color if provided
-  if $color != null {
-    let color_id = $colors | get -o $color
-    if $color_id == null {
-      error make {
-        msg: $"Unknown color name: ($color)"
-        label: {text: "valid colors: clear, red, blue, green, orange, pink, maroon, peach, navy, brown, yellow, darkgreen, gray, purple, darkgray"}
-      }
-    }
-
-    if $verbose {
-      print $"[COLOR] Setting initial color to ($color) (($color_id))..."
-    }
-
-    let color_path = "k7tDX7WolUoWsg_mJCVo61xVPcPNJVtn8"
-    (
-      http post --full --allow-errors
-      --content-type "application/json"
-      --headers {
-        "Accept-Encoding": "br, gzip"
-        "Cookie": $cookie_header
-      }
-      $"https://checkboxes.andersmurphy.com/($color_path)"
-      {
-        csrf: $csrf
-        tabid: $tabid
-        targetid: ($color_id | into string)
-      }
-    ) | ignore
-
-    if $verbose {
-      print $"[OK] Initial color set to ($color)"
-    }
   }
 
   $in | each {|item|
