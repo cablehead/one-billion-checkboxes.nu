@@ -32,15 +32,19 @@ def get-session [ --verbose] {
   let sid = ($cookies | where name == "__Host-sid" | get value | first)
   let csrf = ($cookies | where name == "__Host-csrf" | get value | first)
 
+  let tabid = $"nu-(random uuid)"
+
   if $verbose {
     print $"   SID: ($sid)"
     print $"   CSRF: ($csrf)"
+    print $"   TabID: ($tabid)"
   }
 
   {
     sid: $sid
     csrf: $csrf
     cookie_header: $"__Host-sid=($sid); __Host-csrf=($csrf)"
+    tabid: $tabid
   }
 }
 
@@ -79,6 +83,8 @@ export def toggle [
   let session = (get-session --verbose=$verbose)
   let cookie_header = $session.cookie_header
   let csrf = $session.csrf
+  let tabid = $session.tabid
+
   if $color != null {
     let colors = {
       clear: 0
@@ -121,7 +127,7 @@ export def toggle [
       $"https://checkboxes.andersmurphy.com/($color_path)"
       {
         csrf: $csrf
-        tabid: "nushell-cli"
+        tabid: $tabid
         targetid: ($color_id | into string)
       }
     )
@@ -154,7 +160,7 @@ export def toggle [
     $"https://checkboxes.andersmurphy.com/($action_path)"
     {
       csrf: $csrf
-      tabid: "nushell-cli"
+      tabid: $tabid
       targetid: ($cell | into string)
       parentid: ($chunk | into string)
     }
@@ -191,21 +197,21 @@ export def toggle [
 # List available colors
 export def colors []: nothing -> table {
   [
-    {id: 0, name: "clear"}
-    {id: 1, name: "red"}
-    {id: 2, name: "blue"}
-    {id: 3, name: "green"}
-    {id: 4, name: "orange"}
-    {id: 5, name: "pink"}
-    {id: 6, name: "maroon"}
-    {id: 7, name: "peach"}
-    {id: 8, name: "navy"}
-    {id: 9, name: "brown"}
-    {id: 10, name: "yellow"}
-    {id: 11, name: "darkgreen"}
-    {id: 12, name: "gray"}
-    {id: 13, name: "purple"}
-    {id: 14, name: "darkgray"}
+    {id: 0 name: "clear"}
+    {id: 1 name: "red"}
+    {id: 2 name: "blue"}
+    {id: 3 name: "green"}
+    {id: 4 name: "orange"}
+    {id: 5 name: "pink"}
+    {id: 6 name: "maroon"}
+    {id: 7 name: "peach"}
+    {id: 8 name: "navy"}
+    {id: 9 name: "brown"}
+    {id: 10 name: "yellow"}
+    {id: 11 name: "darkgreen"}
+    {id: 12 name: "gray"}
+    {id: 13 name: "purple"}
+    {id: 14 name: "darkgray"}
   ]
 }
 
@@ -260,9 +266,9 @@ export def batch [
 # List available commands
 export def main []: nothing -> table {
   [
-    {command: "toggle", description: "Toggle checkbox at x,y coordinates"}
-    {command: "batch", description: "Toggle multiple checkboxes from list"}
-    {command: "colors", description: "List available colors"}
-    {command: "info", description: "Service metadata"}
+    {command: "toggle" description: "Toggle checkbox at x,y coordinates"}
+    {command: "batch" description: "Toggle multiple checkboxes from list"}
+    {command: "colors" description: "List available colors"}
+    {command: "info" description: "Service metadata"}
   ]
 }
