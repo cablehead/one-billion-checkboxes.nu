@@ -112,11 +112,11 @@ def batch-stream [
   session: record
   colors: record
   --verbose (-v)
-]: list<record> -> table {
+]: any -> table {
   each {|item|
-  let cookie_header = $session.cookie_header
-  let csrf = $session.csrf
-  let tabid = $session.tabid
+    let cookie_header = $session.cookie_header
+    let csrf = $session.csrf
+    let tabid = $session.tabid
 
     if ($item | get -o color) != null {
       # Color operation
@@ -244,16 +244,17 @@ def batch-stream [
 
 # Process stream of toggle and color operations
 #
-# Stream format: list of records with either:
+# Stream format: record or list of records with either:
 #   {toggle: {x: int, y: int}} - toggle checkbox
 #   {color: string} - set color for subsequent toggles
 #
 # Examples:
+#   {toggle: {x: 0, y: 0}} | batch
 #   [{toggle: {x: 0, y: 0}}] | batch
 #   [{color: "red"}, {toggle: {x: 0, y: 0}}] | batch
 export def batch [
   --verbose (-v) # Show detailed output for each operation
-]: list<record> -> table {
+]: any -> table {
   batch-stream (get-session --verbose=$verbose) {
     clear: 0
     red: 1
