@@ -52,7 +52,7 @@ def get-session [ --verbose] {
 export def toggle [
   x: int # X coordinate (0-31631)
   y: int # Y coordinate (0-31631)
-  --color: string # Color name (red, blue, green, orange, etc.)
+  --color: string # Color name (see `colors` command)
   --verbose (-v) # Show detailed output
 ]: nothing -> record {
 
@@ -235,7 +235,7 @@ export def info []: nothing -> record {
 #   [{x: 0, y: 0}, {x: 1, y: 0}] | batch
 #   [{x: 0, y: 0, color: "red"}] | batch
 export def batch [
-  --color: string # Global color for all toggles (can be overridden per item)
+  --color: string # Global color (see `colors` command; can be overridden per item)
   --verbose (-v) # Show detailed output for each toggle
 ]: list<record> -> table {
   each {|item|
