@@ -44,6 +44,14 @@ def get-session [ --verbose] {
   }
 }
 
+# Conditionally apply a pipeline operation
+def conditional-pipe [
+  condition: bool
+  action: closure
+] {
+  if $condition { do $action } else { $in }
+}
+
 # Toggle a single checkbox at x,y coordinates
 #
 # Convenience wrapper around batch for single toggles.
@@ -53,13 +61,9 @@ export def toggle [
   --color: string # Color name (see `colors` command)
   --verbose (-v) # Show detailed output
 ]: nothing -> table {
-  let ops = if $color != null {
-    [{color: $color} {toggle: {x: $x y: $y}}]
-  } else {
-    [{toggle: {x: $x y: $y}}]
-  }
-
-  $ops | batch --verbose=$verbose
+  [{toggle: {x: $x y: $y}}]
+    | conditional-pipe ($color != null) { prepend {color: $color} }
+    | batch --verbose=$verbose
 }
 
 # List available colors
