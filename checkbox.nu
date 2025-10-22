@@ -188,6 +188,27 @@ export def toggle [
   }
 }
 
+# List available colors
+export def colors []: nothing -> table {
+  [
+    {id: 0, name: "clear"}
+    {id: 1, name: "red"}
+    {id: 2, name: "blue"}
+    {id: 3, name: "green"}
+    {id: 4, name: "orange"}
+    {id: 5, name: "pink"}
+    {id: 6, name: "maroon"}
+    {id: 7, name: "peach"}
+    {id: 8, name: "navy"}
+    {id: 9, name: "brown"}
+    {id: 10, name: "yellow"}
+    {id: 11, name: "darkgreen"}
+    {id: 12, name: "gray"}
+    {id: 13, name: "purple"}
+    {id: 14, name: "darkgray"}
+  ]
+}
+
 # Service metadata
 export def info []: nothing -> record {
   {
