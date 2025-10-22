@@ -240,7 +240,7 @@ export def batch [
 ]: list<record> -> table {
   each {|item|
     let item_color = (
-      if ($item | get -i color) != null {
+      if ($item | get -o color) != null {
         $item.color
       } else if $color != null {
         $color
@@ -255,4 +255,14 @@ export def batch [
       toggle $item.x $item.y --verbose=$verbose
     }
   }
+}
+
+# List available commands
+export def main []: nothing -> table {
+  [
+    {command: "toggle", description: "Toggle checkbox at x,y coordinates"}
+    {command: "batch", description: "Toggle multiple checkboxes from list"}
+    {command: "colors", description: "List available colors"}
+    {command: "info", description: "Service metadata"}
+  ]
 }
