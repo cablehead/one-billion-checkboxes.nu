@@ -89,7 +89,7 @@ const COLORS = [
 # Convert colors table to lookup record {name: id, ...}
 # Used internally for O(1) color name lookups
 def colors-to-map []: nothing -> record {
-  $COLORS | reduce -f {} {|item, acc|
+  $COLORS | reduce -f {} {|item acc|
     $acc | insert $item.name $item.id
   }
 }
@@ -137,7 +137,7 @@ def batch-stream [
       if $color_id == null {
         error make {
           msg: $"Unknown color name: ($color_name)"
-          label: {text: "valid colors: clear, red, blue, green, orange, pink, maroon, peach, navy, brown, yellow, darkgreen, gray, purple, darkgray"}
+          label: {text: $"valid colors: ($COLORS | get name | str join ', ')"}
         }
       }
 
