@@ -87,6 +87,12 @@ const COLORS = [
 const ENDPOINT_TOGGLE = "t_rqnpSL_NvK8EJhoBwkc6TNJ4VsLi1Fs"
 const ENDPOINT_COLOR = "k7tDX7WolUoWsg_mJCVo61xVPcPNJVtn8"
 
+const FACTOIDS = [
+  "A human heart beats approximately 2.5 billion times in a lifetime"
+  "1 billion steps is about 500,000 miles, or twenty times around Earth"
+  "1 billion seconds is about 31.7 years"
+]
+
 # Convert colors table to lookup record {name: id, ...}
 def colors-to-map []: nothing -> record {
   $COLORS | reduce -f {} {|item acc|
@@ -117,6 +123,7 @@ export def info []: nothing -> record {
       toggle: $"/($ENDPOINT_TOGGLE)"
       color: $"/($ENDPOINT_COLOR)"
     }
+    factoid: ($FACTOIDS | shuffle | first)
   }
 }
 
