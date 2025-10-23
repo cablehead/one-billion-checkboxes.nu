@@ -94,6 +94,10 @@ const FACTOIDS = [
   "1 billion seconds is about 31.7 years"
 ]
 
+const GRID_SIZE = 31632
+const CHUNK_SIZE = 16
+const CHUNKS_PER_DIM = ($GRID_SIZE / $CHUNK_SIZE)
+
 # Convert colors table to lookup record {name: id, ...}
 def colors-to-map []: nothing -> record {
   $COLORS | reduce -f {} {|item acc|
@@ -113,12 +117,12 @@ export def info []: nothing -> record {
     url: "https://checkboxes.andersmurphy.com/"
     author: "Anders Murphy"
     framework: "Hyperlith (Clojure + Datastar)"
-    grid_size: "31,632 × 31,632"
-    chunk_size: 16
-    cells_per_chunk: 256
-    total_cells: (31632 * 31632)
+    grid_size: $"($GRID_SIZE | into string -g) x ($GRID_SIZE | into string -g)"
+    chunk_size: $CHUNK_SIZE
+    cells_per_chunk: ($CHUNK_SIZE * $CHUNK_SIZE)
+    total_cells: ($GRID_SIZE * $GRID_SIZE)
     description: "A collaborative checkbox grid"
-    coordinate_range: "x: 0-31631, y: 0-31631"
+    coordinate_range: $"x: 0-($GRID_SIZE - 1), y: 0-($GRID_SIZE - 1)"
     endpoints: {
       homepage: "/"
       toggle: $"/($ENDPOINT_TOGGLE)"
@@ -186,25 +190,25 @@ def batch-stream [
       let x = $item.toggle.x
       let y = $item.toggle.y
 
-      if $x < 0 or $x > 31631 {
+      if $x < 0 or $x > ($GRID_SIZE - 1) {
         error make {
-          msg: $"X coordinate must be between 0 and 31631, got ($x)"
+          msg: $"X coordinate must be between 0 and ($GRID_SIZE - 1), got ($x)"
         }
       }
-      if $y < 0 or $y > 31631 {
+      if $y < 0 or $y > ($GRID_SIZE - 1) {
         error make {
-          msg: $"Y coordinate must be between 0 and 31631, got ($y)"
+          msg: $"Y coordinate must be between 0 and ($GRID_SIZE - 1), got ($y)"
         }
       }
 
-      # Convert x,y to chunk/cell (16x16 chunks)
-      let chunk_x = $x // 16
-      let chunk_y = $y // 16
-      let local_x = $x mod 16
-      let local_y = $y mod 16
+      # Convert x,y to chunk/cell
+      let chunk_x = $x // $CHUNK_SIZE
+      let chunk_y = $y // $CHUNK_SIZE
+      let local_x = $x mod $CHUNK_SIZE
+      let local_y = $y mod $CHUNK_SIZE
 
-      let chunk = $chunk_y * 1977 + $chunk_x
-      let cell = $local_y * 16 + $local_x
+      let chunk = $chunk_y * $CHUNKS_PER_DIM + $chunk_x
+      let cell = $local_y * $CHUNK_SIZE + $local_x
 
       if $verbose {
         print $"[TOGGLE] Toggling checkbox at ($x), ($y) [chunk ($chunk), cell ($cell)]..."
