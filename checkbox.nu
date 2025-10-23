@@ -116,7 +116,7 @@ export def info []: nothing -> record {
     grid_size: "31,632 × 31,632"
     chunk_size: 16
     cells_per_chunk: 256
-    total_cells: 1000782224
+    total_cells: (31632 * 31632)
     description: "A collaborative checkbox grid"
     coordinate_range: "x: 0-31631, y: 0-31631"
     endpoints: {
