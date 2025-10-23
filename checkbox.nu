@@ -66,25 +66,37 @@ export def toggle [
   | batch --verbose=$verbose
 }
 
+# Base color definitions (single source of truth)
+# All color operations should derive from this table
+const COLORS = [
+  {id: 0 name: "clear"}
+  {id: 1 name: "red"}
+  {id: 2 name: "blue"}
+  {id: 3 name: "green"}
+  {id: 4 name: "orange"}
+  {id: 5 name: "pink"}
+  {id: 6 name: "maroon"}
+  {id: 7 name: "peach"}
+  {id: 8 name: "navy"}
+  {id: 9 name: "brown"}
+  {id: 10 name: "yellow"}
+  {id: 11 name: "darkgreen"}
+  {id: 12 name: "gray"}
+  {id: 13 name: "purple"}
+  {id: 14 name: "darkgray"}
+]
+
+# Convert colors table to lookup record {name: id, ...}
+# Used internally for O(1) color name lookups
+def colors-to-map []: nothing -> record {
+  $COLORS | reduce -f {} {|item, acc|
+    $acc | insert $item.name $item.id
+  }
+}
+
 # List available colors
 export def colors []: nothing -> table {
-  [
-    {id: 0 name: "clear"}
-    {id: 1 name: "red"}
-    {id: 2 name: "blue"}
-    {id: 3 name: "green"}
-    {id: 4 name: "orange"}
-    {id: 5 name: "pink"}
-    {id: 6 name: "maroon"}
-    {id: 7 name: "peach"}
-    {id: 8 name: "navy"}
-    {id: 9 name: "brown"}
-    {id: 10 name: "yellow"}
-    {id: 11 name: "darkgreen"}
-    {id: 12 name: "gray"}
-    {id: 13 name: "purple"}
-    {id: 14 name: "darkgray"}
-  ]
+  $COLORS
 }
 
 # Service metadata
@@ -255,23 +267,7 @@ def batch-stream [
 export def batch [
   --verbose (-v) # Show detailed output for each operation
 ]: any -> table {
-  batch-stream (get-session --verbose=$verbose) {
-    clear: 0
-    red: 1
-    blue: 2
-    green: 3
-    orange: 4
-    pink: 5
-    maroon: 6
-    peach: 7
-    navy: 8
-    brown: 9
-    yellow: 10
-    darkgreen: 11
-    gray: 12
-    purple: 13
-    darkgray: 14
-  } --verbose=$verbose
+  batch-stream (get-session --verbose=$verbose) (colors-to-map) --verbose=$verbose
 }
 
 # List available commands
