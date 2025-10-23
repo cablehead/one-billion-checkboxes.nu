@@ -143,122 +143,122 @@ def batch-stream [
     let csrf = $session.csrf
     let tabid = $session.tabid
 
-    if ($item | get -o color) != null {
-      # Color operation
-      let color_name = $item.color
-      let color_id = $colors | get -o $color_name
-      if $color_id == null {
-        error make {
-          msg: $"Unknown color name: ($color_name)"
-          label: {text: $"valid colors: ($COLORS | get name | str join ', ')"}
+    match $item {
+      {color: $color_name} => {
+        # Color operation
+        let color_id = $colors | get -o $color_name
+        if $color_id == null {
+          error make {
+            msg: $"Unknown color name: ($color_name)"
+            label: {text: $"valid colors: ($COLORS | get name | str join ', ')"}
+          }
         }
-      }
 
-      if $verbose {
-        print $"[COLOR] Setting color to ($color_name) (($color_id))..."
-      }
-
-      let color_resp = (
-        http post --full --allow-errors
-        --content-type "application/json"
-        --headers {
-          "Accept-Encoding": "br, gzip"
-          "Cookie": $cookie_header
+        if $verbose {
+          print $"[COLOR] Setting color to ($color_name) (($color_id))..."
         }
-        $"https://checkboxes.andersmurphy.com/($ENDPOINT_COLOR)"
-        {
-          csrf: $csrf
-          tabid: $tabid
-          targetid: ($color_id | into string)
-        }
-      )
 
-      let color_status = $color_resp | get status
-      if $color_status != 204 {
-        error make {
-          msg: $"Failed to set color. HTTP status: ($color_status)"
-        }
-      }
-
-      if $verbose {
-        print $"[OK] Color set to ($color_name)"
-      }
-
-      {operation: "color" color: $color_name success: true}
-    } else if ($item | get -o toggle) != null {
-      # Toggle operation
-      let x = $item.toggle.x
-      let y = $item.toggle.y
-
-      if $x < 0 or $x > ($GRID_SIZE - 1) {
-        error make {
-          msg: $"X coordinate must be between 0 and ($GRID_SIZE - 1), got ($x)"
-        }
-      }
-      if $y < 0 or $y > ($GRID_SIZE - 1) {
-        error make {
-          msg: $"Y coordinate must be between 0 and ($GRID_SIZE - 1), got ($y)"
-        }
-      }
-
-      # Convert x,y to chunk/cell
-      let chunk_x = $x // $CHUNK_SIZE
-      let chunk_y = $y // $CHUNK_SIZE
-      let local_x = $x mod $CHUNK_SIZE
-      let local_y = $y mod $CHUNK_SIZE
-
-      let chunk = $chunk_y * $CHUNKS_PER_DIM + $chunk_x
-      let cell = $local_y * $CHUNK_SIZE + $local_x
-
-      if $verbose {
-        print $"[TOGGLE] Toggling checkbox at ($x), ($y) [chunk ($chunk), cell ($cell)]..."
-      }
-
-      let toggle_resp = (
-        http post --full --allow-errors
-        --content-type "application/json"
-        --headers {
-          "Accept-Encoding": "br, gzip"
-          "Cookie": $cookie_header
-        }
-        $"https://checkboxes.andersmurphy.com/($ENDPOINT_TOGGLE)"
-        {
-          csrf: $csrf
-          tabid: $tabid
-          targetid: ($cell | into string)
-          parentid: ($chunk | into string)
-        }
-      )
-
-      let status = $toggle_resp | get status
-      let success = $status == 204
-
-      if $verbose {
-        if $success {
-          print $"[OK] SUCCESS - Toggled checkbox at ($x), ($y)"
-        } else {
-          print $"[ERROR] FAILED - HTTP Status: ($status)"
-        }
-      }
-
-      {
-        success: $success
-        status: $status
-        x: $x
-        y: $y
-        chunk: $chunk
-        cell: $cell
-        message: (
-          if $success {
-            "Checkbox toggled successfully"
-          } else {
-            $"Failed with HTTP status ($status)"
+        let color_resp = (
+          http post --full --allow-errors
+          --content-type "application/json"
+          --headers {
+            "Accept-Encoding": "br, gzip"
+            "Cookie": $cookie_header
+          }
+          $"https://checkboxes.andersmurphy.com/($ENDPOINT_COLOR)"
+          {
+            csrf: $csrf
+            tabid: $tabid
+            targetid: ($color_id | into string)
           }
         )
+
+        let color_status = $color_resp | get status
+        if $color_status != 204 {
+          error make {
+            msg: $"Failed to set color. HTTP status: ($color_status)"
+          }
+        }
+
+        if $verbose {
+          print $"[OK] Color set to ($color_name)"
+        }
+
+        {operation: "color" color: $color_name success: true}
       }
-    } else {
-      error make {
-        msg: "Invalid operation: must have either 'toggle' or 'color' key"
+      {toggle: {x: $x y: $y}} => {
+        # Toggle operation
+        if $x < 0 or $x > ($GRID_SIZE - 1) {
+          error make {
+            msg: $"X coordinate must be between 0 and ($GRID_SIZE - 1), got ($x)"
+          }
+        }
+        if $y < 0 or $y > ($GRID_SIZE - 1) {
+          error make {
+            msg: $"Y coordinate must be between 0 and ($GRID_SIZE - 1), got ($y)"
+          }
+        }
+
+        # Convert x,y to chunk/cell
+        let chunk_x = $x // $CHUNK_SIZE
+        let chunk_y = $y // $CHUNK_SIZE
+        let local_x = $x mod $CHUNK_SIZE
+        let local_y = $y mod $CHUNK_SIZE
+
+        let chunk = $chunk_y * $CHUNKS_PER_DIM + $chunk_x
+        let cell = $local_y * $CHUNK_SIZE + $local_x
+
+        if $verbose {
+          print $"[TOGGLE] Toggling checkbox at ($x), ($y) [chunk ($chunk), cell ($cell)]..."
+        }
+
+        let toggle_resp = (
+          http post --full --allow-errors
+          --content-type "application/json"
+          --headers {
+            "Accept-Encoding": "br, gzip"
+            "Cookie": $cookie_header
+          }
+          $"https://checkboxes.andersmurphy.com/($ENDPOINT_TOGGLE)"
+          {
+            csrf: $csrf
+            tabid: $tabid
+            targetid: ($cell | into string)
+            parentid: ($chunk | into string)
+          }
+        )
+
+        let status = $toggle_resp | get status
+        let success = $status == 204
+
+        if $verbose {
+          if $success {
+            print $"[OK] SUCCESS - Toggled checkbox at ($x), ($y)"
+          } else {
+            print $"[ERROR] FAILED - HTTP Status: ($status)"
+          }
+        }
+
+        {
+          success: $success
+          status: $status
+          x: $x
+          y: $y
+          chunk: $chunk
+          cell: $cell
+          message: (
+            if $success {
+              "Checkbox toggled successfully"
+            } else {
+              $"Failed with HTTP status ($status)"
+            }
+          )
+        }
+      }
+      _ => {
+        error make {
+          msg: "Invalid operation: must have either 'toggle' or 'color' key"
+        }
       }
     }
   }
