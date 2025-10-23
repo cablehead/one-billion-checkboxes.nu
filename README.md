@@ -4,6 +4,7 @@ A [Nushell](https://www.nushell.sh) module for interacting with [checkboxes.ande
 
 - **Fun Fact:** there are actually 1,000,583,424 checkboxes.
 
-<img width="749" height="393" alt="image" src="https://github.com/user-attachments/assets/6bf13fb2-6839-446b-8339-996f15bd1812" />
+<img width="786" height="443" alt="image" src="https://github.com/user-attachments/assets/f9cfcc0a-0e6b-4c4b-9add-49e70cbc820b" />
+
 
 https://github.com/user-attachments/assets/09a29353-8faa-4984-a6c4-3ae31d326136
