@@ -84,6 +84,9 @@ const COLORS = [
   {id: 14 name: "darkgray"}
 ]
 
+const ENDPOINT_TOGGLE = "t_rqnpSL_NvK8EJhoBwkc6TNJ4VsLi1Fs"
+const ENDPOINT_COLOR = "k7tDX7WolUoWsg_mJCVo61xVPcPNJVtn8"
+
 # Convert colors table to lookup record {name: id, ...}
 def colors-to-map []: nothing -> record {
   $COLORS | reduce -f {} {|item acc|
@@ -111,7 +114,8 @@ export def info []: nothing -> record {
     coordinate_range: "x: 0-31631, y: 0-31631"
     endpoints: {
       homepage: "/"
-      toggle: "/t_rqnpSL_NvK8EJhoBwkc6TNJ4VsLi1Fs"
+      toggle: $"/($ENDPOINT_TOGGLE)"
+      color: $"/($ENDPOINT_COLOR)"
     }
   }
 }
@@ -142,7 +146,6 @@ def batch-stream [
         print $"[COLOR] Setting color to ($color_name) (($color_id))..."
       }
 
-      let color_path = "k7tDX7WolUoWsg_mJCVo61xVPcPNJVtn8"
       let color_resp = (
         http post --full --allow-errors
         --content-type "application/json"
@@ -150,7 +153,7 @@ def batch-stream [
           "Accept-Encoding": "br, gzip"
           "Cookie": $cookie_header
         }
-        $"https://checkboxes.andersmurphy.com/($color_path)"
+        $"https://checkboxes.andersmurphy.com/($ENDPOINT_COLOR)"
         {
           csrf: $csrf
           tabid: $tabid
@@ -195,8 +198,6 @@ def batch-stream [
       let chunk = $chunk_y * 1977 + $chunk_x
       let cell = $local_y * 16 + $local_x
 
-      let action_path = "t_rqnpSL_NvK8EJhoBwkc6TNJ4VsLi1Fs"
-
       if $verbose {
         print $"[TOGGLE] Toggling checkbox at ($x), ($y) [chunk ($chunk), cell ($cell)]..."
       }
@@ -208,7 +209,7 @@ def batch-stream [
           "Accept-Encoding": "br, gzip"
           "Cookie": $cookie_header
         }
-        $"https://checkboxes.andersmurphy.com/($action_path)"
+        $"https://checkboxes.andersmurphy.com/($ENDPOINT_TOGGLE)"
         {
           csrf: $csrf
           tabid: $tabid
