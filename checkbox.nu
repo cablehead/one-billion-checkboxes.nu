@@ -8,6 +8,7 @@
 #   use checkbox.nu
 #   checkbox toggle 100 200
 
+# Fetch session cookies and generate authentication record
 def get-session [ --verbose] {
   if $verbose {
     print $"[AUTH] Fetching session cookies..."
