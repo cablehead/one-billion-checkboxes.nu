@@ -66,8 +66,6 @@ export def toggle [
   | batch --verbose=$verbose
 }
 
-# Base color definitions (single source of truth)
-# All color operations should derive from this table
 const COLORS = [
   {id: 0 name: "clear"}
   {id: 1 name: "red"}
@@ -87,7 +85,6 @@ const COLORS = [
 ]
 
 # Convert colors table to lookup record {name: id, ...}
-# Used internally for O(1) color name lookups
 def colors-to-map []: nothing -> record {
   $COLORS | reduce -f {} {|item acc|
     $acc | insert $item.name $item.id
